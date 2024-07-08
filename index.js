@@ -18,8 +18,20 @@ velX = 0;
 velY = 0;
 targetX =0;
 targetY =0;
-zoom = 1;
+zoom = 0.8;
 
+game_colors = [
+	'rgba(255,0  ,0  ,1)',
+	'rgba(255,255,0  ,1)',
+	'rgba(0  ,0  ,250,1)',
+	'rgba(255,0  ,250,1)',
+	'rgba(255,0  ,0  ,1)',
+	'rgba(255,100,150,1)',
+	'rgba(10 ,100,50 ,1)',
+	'rgba(255,20 ,250,1)',
+	'rgba(255,100,100,1)',
+	'rgba(255,0  ,100,1)'
+]
 function init()
 {
 	for (let i=0;i<gridHeight;i++)
@@ -31,7 +43,7 @@ function init()
 		}
 	}
 	grid[2][4] = 1;
-	grid[4][4] = 1;
+	grid[4][4] = 5;
 }
 function getBoxWidth()
 {
@@ -46,19 +58,19 @@ function renderGrid(camX,camY)
 {
 
 	let boxWidth = getBoxWidth()
-	c.fillStyle = 'rgba(150,220,50,1)'
+	c.fillStyle = 'rgba(50,0,50,1)'
+	c.strokeStyle = 'black'
 	c.fillRect(0-camX*boxWidth,0-camY*boxWidth,boxWidth * gridWidth, boxWidth * gridHeight)
-	c.fillStyle = 'rgba(255,0,0,1)'
+	//c.fillStyle = 'rgba(255,0,0,1)'
 	for (let y=0;y<gridHeight;y++)
 	{
-	
 		if ((y-camY)*boxWidth > canvas.height)
 		{
 			break;
 		}
 		c.beginPath(); 
 		c.moveTo(-camX*boxWidth,(y-camY)*boxWidth)
-		c.lineTo(boxWidth*gridWidth,(y-camY)*boxWidth)
+		c.lineTo(boxWidth*gridWidth*2,(y-camY)*boxWidth)
 		c.stroke();
 		for (let x=0; x<gridWidth;x++)
 		{
@@ -68,10 +80,11 @@ function renderGrid(camX,camY)
 			}
 			c.beginPath(); 
 			c.moveTo((x-camX)*boxWidth,(-camY)*boxWidth)
-			c.lineTo((x-camX)*boxWidth,boxWidth*gridWidth)
+			c.lineTo((x-camX)*boxWidth,boxWidth*gridWidth*2)
 			c.stroke();
 			if (grid[x][y] != 0)
 			{
+				c.fillStyle = game_colors[grid[x][y]-1]
 				c.fillRect((x-camX)*boxWidth,(y-camY)*boxWidth,boxWidth,boxWidth);
 			}
 		}
@@ -115,12 +128,11 @@ function getAliveNeighbors(px,py)
 			{
 				continue;
 			}
-			let b = grid[nx][ny];
-			if (b == 0)
+			if (grid[nx][ny] == 0)
 			{
 				continue;
 			}
-			neighbors[neighbors.length] = [nx,ny]
+			neighbors[neighbors.length] = [nx,ny, grid[nx][ny]]
 		}
 	}
 	return neighbors
@@ -140,7 +152,7 @@ function thinkGrid()
 		{
 		
 			let n = getAliveNeighbors(x,y);
-			if (grid[x][y] == 1)
+			if (grid[x][y] > 0)
 			{
 				if (n.length < 2 || n.length>3)
 				{
@@ -151,7 +163,7 @@ function thinkGrid()
 			{
 				if (n.length == 3)
 				{
-					setCell(x,y,1)
+					setCell(x,y,n[2][2])
 				}
 			}
 		}
@@ -179,13 +191,17 @@ function animate() {
 	let boxWidth = getBoxWidth()
 	let boxWidthNoZoom = getBoxWidthNoZoom();
 	
-	
-	playerX += velX /zoom
-	playerY += velY /zoom
-	let maxX = (gridWidth)
-	let maxY = (gridHeight)
-	let minX = -(gridWidth);
-	let minY = -(gridHeight)
+	var slowness = zoom;
+	if (zoom<2)
+	{
+		slowness = 5;
+	}
+	playerX += velX /slowness
+	playerY += velY /slowness
+	let maxX = (gridWidth)/2
+	let maxY = (gridHeight)/2
+	let minX = -maxX;
+	let minY = -maxY
 	if (playerX > maxX)
 	{
 		playerX = maxX;
@@ -202,20 +218,26 @@ function animate() {
 	{
 		playerY = maxY;
 	}
-	if (zoom == 1)
+	if (zoom == 0.8)
 	{
-		playerX = 0;
-		playerY = 0;
+		playerX = -boxWidth;
+		//playerY = -boxWidth;
 	}
+
 	thinkGrid();
 	updateGrid();
 	renderGrid(playerX,playerY);
 	
 	if (primaryMouseButtonDown)
 	{
-			let boxWidth = getBoxWidth()
-	grid[Math.floor(playerX+mouseX/boxWidth)][Math.floor(playerY +mouseY/boxWidth)]=1
+		let boxWidth = getBoxWidth()
+		grid[Math.floor(playerX+mouseX/boxWidth)][Math.floor(playerY +mouseY/boxWidth)]=randomColor
 	}
+	else
+	{
+		randomColor = Math.floor(Math.random()*9)+1;
+	}
+	
 }
 /*
 function spawnEnemies() {
@@ -236,7 +258,7 @@ function spawnEnemies() {
 	}, 1000)
 }*/
 var primaryMouseButtonDown = false;
-
+var randomColor = 0;
 function setPrimaryButtonState(e) {
   var flags = e.buttons !== undefined ? e.buttons : e.which;
   var oldDown = primaryMouseButtonDown;
@@ -244,27 +266,22 @@ function setPrimaryButtonState(e) {
   if (!oldDown && primaryMouseButtonDown)
   {
 	  nextThink = performance.now() + 500
+	  console.log(randomColor);
   }
 }
 
 document.addEventListener("mousedown", setPrimaryButtonState);
 document.addEventListener("mousemove", setPrimaryButtonState);
 document.addEventListener("mouseup", setPrimaryButtonState);
-window.addEventListener('click', ()=> {
-	const y = event.clientY 
-	const x = event.clientX
-	let boxWidth = getBoxWidth()
-	grid[Math.floor(playerX+x/boxWidth)][Math.floor(playerY + y/boxWidth)]=1
-	
-})
+
 window.addEventListener("wheel", event => {
     const delta = -Math.sign(event.deltaY);
     console.info(delta);
 	zoom += delta;
 	
-	if (zoom < 1)
+	if (zoom < 0.8)
 	{
-		zoom = 1;
+		zoom = 0.8;
 	}
 	if (zoom>10)
 	{
@@ -282,7 +299,12 @@ function handleMouseMove(event) {
 	let distX = (canvas.width/2) - event.clientX 
 	let distY = (canvas.height/2) - event.clientY 
 	let dist =  Math.sqrt((distX*distX) + (distY*distY));
-	if (dist > 100*zoom)
+	let factor = zoom;
+	if (zoom < 1)
+	{
+		factor = 10;
+	}
+	if (dist > 100*factor)
 	{
 		velX = distX > 0 ? -1 : 1;
 		velY = distY > 0 ? -1 : 1;
